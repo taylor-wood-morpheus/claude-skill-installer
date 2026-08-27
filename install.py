@@ -260,8 +260,28 @@ def split_documents(text: str) -> list[str]:
     return docs
 
 
+def _reject_link_only(text: str) -> None:
+    """Guard against naming a body that carries no skill, only a pointer to one."""
+    body = FRONTMATTER.sub("", text).strip()
+    lines = [line for line in body.splitlines() if line.strip()]
+    if len(lines) == 1 and (RE_URL.match(lines[0]) or RE_BARE_URL.match(lines[0])):
+        log.error("refusing to name a link-only body: %r", lines[0])
+        raise SkillError(
+            "That looks like a link to a skill, not a skill.\n\n"
+            f"{lines[0]}\n\n"
+            "Copy just the link (no surrounding text) and press the hotkey again "
+            "and it will be fetched."
+        )
+    if len(body) < 40:
+        raise SkillError(
+            "There is not enough content here to install as a skill "
+            f"({len(body)} characters)."
+        )
+
+
 def synthesise_frontmatter(text: str) -> dict[str, str]:
     """Ask headless Claude to author the name/description a paste is missing."""
+    _reject_link_only(text)
     prompt = (
         "The text below is a Claude Code skill whose YAML frontmatter is missing "
         "or invalid. Reply with ONLY a JSON object, no prose and no code fence, "
@@ -315,6 +335,10 @@ RE_GH_REPO = re.compile(r"^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$")
 RE_GIST = re.compile(r"^https?://gist\.github\.com/(?:[^/]+/)?([0-9a-fA-F]+)/?$")
 RE_SLACK = re.compile(r"^https?://[^/]*\.slack\.com/")
 RE_URL = re.compile(r"^https?://\S+$")
+# Scheme-less hosts: github.com/o/r/..., gist.github.com/..., raw.github...
+RE_BARE_URL = re.compile(
+    r"^(?:www\.)?((?:[a-z0-9-]+\.)+[a-z]{2,})(/\S*)?$", re.I
+)
 
 
 def _gh_token() -> str | None:
@@ -646,9 +670,13 @@ def sources_from_text(text: str, workdir: Path) -> list[Source]:
     stripped = text.strip()
     if not stripped:
         raise SkillError("There is nothing to install — the text was empty.")
-    if RE_URL.match(stripped) and "\n" not in stripped:
-        log.info("text input is a single url")
-        return [resolve_url(stripped, workdir)]
+    if "\n" not in stripped:
+        if RE_URL.match(stripped):
+            log.info("text input is a single url")
+            return [resolve_url(stripped, workdir)]
+        if RE_BARE_URL.match(stripped) and not Path(stripped).expanduser().exists():
+            log.info("text input is a scheme-less url; assuming https")
+            return [resolve_url(f"https://{stripped.removeprefix('www.')}", workdir)]
     if (path := Path(stripped).expanduser()).exists() and "\n" not in stripped:
         log.info("text input is a path")
         return sources_from_paths([stripped], workdir)

@@ -19,7 +19,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-SERVICE_KEY = "(null) - Add Clipboard to Claude Skills - runWorkflowAsService"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from services import HOTKEY_SERVICE, SERVICES  # noqa: E402
+
+SERVICE_KEY = HOTKEY_SERVICE.pbs_key
 DEFAULT = "^~@s"
 
 # pbs encodes modifiers as sigils. Order matters only for display consistency.
@@ -141,10 +144,11 @@ def write_key_equivalent(equivalent: str | None) -> None:
     entry.setdefault("presentation_modes", {}).update(
         {"ContextMenu": 1, "ServicesMenu": 1}
     )
-    # Keep the two context-menu services visible wherever they can appear.
-    for title in ("Add to Claude Skills", "Add Clipboard to Claude Skills"):
-        other = status.setdefault(f"(null) - {title} - runWorkflowAsService", {})
-        other.setdefault("presentation_modes", {}).update(
+    # macOS hides any service that is not explicitly enabled, so every one of
+    # them needs presentation_modes -- not just the ones with a shortcut.
+    for service in SERVICES:
+        entry = status.setdefault(service.pbs_key, {})
+        entry.setdefault("presentation_modes", {}).update(
             {"ContextMenu": 1, "ServicesMenu": 1, "FinderPreview": 1}
         )
 

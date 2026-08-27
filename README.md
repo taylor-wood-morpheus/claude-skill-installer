@@ -47,6 +47,11 @@ and System Settings → Keyboard → Keyboard Shortcuts → Services still works
 - raw skill markdown, with or without frontmatter
 - a filesystem path
 
+URLs pasted without a scheme (`github.com/o/r/...`, as copied from a browser bar
+or a chat message) are recognised and fetched over https. A paste whose entire
+body is a link is refused rather than named — otherwise headless Claude writes
+convincing frontmatter for a skill that contains nothing but a URL.
+
 Slack message permalinks are **rejected with an explanation**: they carry no
 readable content without a Slack app token. Copy the message *text* instead, or
 download the attachment and use the Finder action.
@@ -73,8 +78,15 @@ download the attachment and use the Finder action.
 Four Automator `.workflow` bundles in `~/Library/Services`, all invoking
 `~/.claude/tools/skill-installer/run.sh`.
 
-Two constraints shaped this. Services are matched by **UTI conformance, never by
-filename**, so the Finder item cannot be scoped to files called `SKILL.md`; it
+`services.py` is the single description of all four bundles. Both the generator
+and the hotkey editor read it, because every service needs an explicit
+`presentation_modes` entry in `pbs` — macOS hides any service that is not
+enabled, and a service added to one list while missing from the other never
+appears. Menu titles must also be unique: `pbs` keys services by menu title, so
+two bundles sharing a title collapse into one entry and only one can be enabled.
+
+Two further constraints shaped this. Services are matched by **UTI conformance,
+never by filename**, so the Finder item cannot be scoped to files called `SKILL.md`; it
 declares `public.folder`, `public.archive` and `public.plain-text`, which covers
 folders, every archive flavour and anything text-like. And services run with a
 minimal environment via launchd, so `run.sh` resolves an interpreter and fixes

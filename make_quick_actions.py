@@ -23,63 +23,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import set_hotkey  # noqa: E402  (same directory, installed alongside)
+from services import SERVICES  # noqa: E402
 
-SERVICES = Path.home() / "Library" / "Services"
+SERVICES_DIR = Path.home() / "Library" / "Services"
 RUNNER = "$HOME/.claude/tools/skill-installer/run.sh"
 TEMPLATE = Path(__file__).resolve().parent / "action_template.b64"
 
-# bundle name, menu title, shell command, service input UTI,
-# (Info.plist send-types key, value), inputMethod (0 = stdin, 1 = "$@")
-SPECS = [
-    (
-        "Add to Claude Skills",
-        "Add to Claude Skills",
-        f'exec "{RUNNER}" files "$@"',
-        "com.apple.Automator.fileSystemObject",
-        # Matching is by UTI conformance, so these three cover folders, every
-        # archive flavour, and anything text-like. Services cannot match on a
-        # filename, so "only SKILL.md" is not expressible.
-        ("NSSendFileTypes", ["public.folder", "public.archive", "public.plain-text"]),
-        1,
-    ),
-    (
-        "Add Selected Text to Claude Skills",
-        "Add to Claude Skills",
-        f'exec "{RUNNER}" text',
-        "com.apple.Automator.text",
-        ("NSSendTypes", ["NSStringPboardType"]),
-        0,
-    ),
-    (
-        "Add Clipboard to Claude Skills",
-        "Add Clipboard to Claude Skills",
-        f'exec "{RUNNER}" clipboard',
-        "com.apple.Automator.nothing",
-        ("NSSendTypes", []),
-        0,
-    ),
-    (
-        "Set Claude Skills Hotkey",
-        "Set Claude Skills Hotkey",
-        f'exec "{RUNNER}" hotkey',
-        "com.apple.Automator.nothing",
-        ("NSSendTypes", []),
-        0,
-    ),
-]
-
-
 def build(template: dict) -> list[Path]:
-    SERVICES.mkdir(parents=True, exist_ok=True)
+    SERVICES_DIR.mkdir(parents=True, exist_ok=True)
     built = []
-    for name, title, command, input_type, (send_key, send_value), method in SPECS:
+    for service in SERVICES:
         doc = copy.deepcopy(template)
         action = doc["actions"][0]["action"]
         action["ActionParameters"].update(
             {
-                "COMMAND_STRING": command,
+                "COMMAND_STRING": service.command,
                 "shell": "/bin/zsh",
-                "inputMethod": method,
+                "inputMethod": 0 if service.stdin else 1,
                 "CheckedForUserDefaultShell": True,
             }
         )
@@ -88,8 +48,8 @@ def build(template: dict) -> list[Path]:
 
         doc["workflowMetaData"].update(
             {
-                "inputTypeIdentifier": input_type,
-                "serviceInputTypeIdentifier": input_type,
+                "inputTypeIdentifier": service.input_type,
+                "serviceInputTypeIdentifier": service.input_type,
                 "outputTypeIdentifier": "com.apple.Automator.nothing",
                 "serviceOutputTypeIdentifier": "com.apple.Automator.nothing",
                 "useAutomaticInputType": False,
@@ -103,14 +63,14 @@ def build(template: dict) -> list[Path]:
         info = {
             "NSServices": [
                 {
-                    "NSMenuItem": {"default": title},
+                    "NSMenuItem": {"default": service.menu_title},
                     "NSMessage": "runWorkflowAsService",
-                    send_key: send_value,
+                    service.send_key: list(service.send_value),
                 }
             ]
         }
 
-        bundle = SERVICES / f"{name}.workflow"
+        bundle = SERVICES_DIR / f"{service.bundle}.workflow"
         shutil.rmtree(bundle, ignore_errors=True)
         (bundle / "Contents").mkdir(parents=True)
         (bundle / "Contents" / "document.wflow").write_bytes(plistlib.dumps(doc))
