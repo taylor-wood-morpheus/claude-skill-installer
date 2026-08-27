@@ -48,19 +48,26 @@ print "  ✓ install.py, run.sh, set_hotkey.py, services.py"
 print "\nGenerating Quick Actions…"
 "$PYTHON" "$HERE/make_quick_actions.py"
 
+print "\nBuilding Claude Skills.app…"
+"$PYTHON" "$HERE/make_app.py"
+
 print "\nRegistering with the Services system…"
 /System/Library/CoreServices/pbs -flush
 print "  ✓ flushed"
 
 cat <<'DONE'
 
-Installed. Three ways to add a skill:
+Installed. Four ways in:
 
   1. Finder      right-click a zip / folder / .md  →  Add to Claude Skills
-  2. Any text    select it  →  right-click  →  Services  →  Add to Claude Skills
+  2. Any text    select it  →  right-click  →  Services
+                 →  Add Selected Text to Claude Skills
   3. Clipboard   copy a GitHub URL or skill text  →  press  ⌃⌥⌘S
+  4. Anywhere    ⌘-space  →  "Claude Skills"  →  add from clipboard, or
+                 view and change the shortcuts
 
-To see or change the shortcuts: right-click anywhere → Services →
-Claude Skills Shortcuts.
+Actions 1 and 2 are Services and appear in the context menu. Action 3 takes no
+input, so macOS will not list it in any Services menu -- the hotkey and the app
+in 4 are the ways to reach it.
 Log:  ~/.claude/tools/skill-installer/install.log
 DONE

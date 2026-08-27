@@ -23,12 +23,18 @@ which of these it found.
 | 1 | Finder right-click → Quick Actions | a `.zip`, a folder, a loose `SKILL.md` |
 | 2 | select text → right-click → Services | skill markdown in a message or doc |
 | 3 | **⌃⌥⌘S** anywhere | GitHub URLs, copied skill text, a file path |
-| 4 | right-click → Services → **Claude Skills Shortcuts** | shows and changes the shortcuts above |
+| 4 | ⌘-space → **Claude Skills** | add from the clipboard; view and change shortcuts |
+
+Actions 1 and 2 are Services and appear in the context menu when the selection
+matches. **Action 3 takes no input, and a Service whose `NSSendTypes` is empty
+matches no context, so macOS never lists it in a Services menu** — it exists to
+carry the keyboard shortcut, and `Claude Skills.app` (action 4) is the reachable
+front door for it. That is why the app exists at all: Spotlight indexes it, so
+⌘-space always finds it.
 
 ### Viewing and changing the shortcuts
 
-Right-click anywhere → Services → **Claude Skills Shortcuts** opens with every
-binding listed:
+⌘-space → **Claude Skills** → *Shortcuts…* opens with every binding listed:
 
 ```
 Add to Claude Skills                 (none)
@@ -91,8 +97,17 @@ download the attachment and use the Finder action.
 
 ## How it works
 
-Four Automator `.workflow` bundles in `~/Library/Services`, all invoking
+Four Automator `.workflow` bundles in `~/Library/Services` plus
+`~/Applications/Claude Skills.app`, all invoking
 `~/.claude/tools/skill-installer/run.sh`.
+
+The app is not decoration. A Service is only offered when its declared send
+types match the current context, so the two actions that take no input
+(clipboard, shortcuts) can never appear in a Services menu — they are listed in
+System Settings → Keyboard Shortcuts → Services, where a shortcut can be
+assigned, but there is no menu item. The app bundle gives them a home Spotlight
+can find, and being written locally rather than downloaded it carries no
+quarantine flag.
 
 `services.py` is the single description of all four bundles. Both the generator
 and the hotkey editor read it, because every service needs an explicit
