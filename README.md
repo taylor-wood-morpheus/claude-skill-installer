@@ -32,6 +32,11 @@ carry the keyboard shortcut, and `Claude Skills.app` (action 4) is the reachable
 front door for it. That is why the app exists at all: Spotlight indexes it, so
 ⌘-space always finds it.
 
+The shortcut itself works regardless: a key equivalent fires for a Service with
+empty `sendTypes` even though that Service can never be shown in a menu
+(verified). So action 3 is reachable by hotkey and by the app, and by nothing
+else — if it seems to have vanished, it hasn't, there was never a menu item.
+
 ### Viewing and changing the shortcuts
 
 ⌘-space → **Claude Skills** → *Shortcuts…* opens with every binding listed:
