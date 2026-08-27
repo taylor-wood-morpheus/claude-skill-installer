@@ -60,6 +60,7 @@ Installed. Three ways to add a skill:
   2. Any text    select it  →  right-click  →  Services  →  Add to Claude Skills
   3. Clipboard   copy a GitHub URL or skill text  →  press  ⌃⌥⌘S
 
-To change that shortcut: right-click anywhere → Services → Set Claude Skills Hotkey.
+To see or change the shortcuts: right-click anywhere → Services →
+Claude Skills Shortcuts.
 Log:  ~/.claude/tools/skill-installer/install.log
 DONE

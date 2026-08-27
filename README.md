@@ -23,18 +23,34 @@ which of these it found.
 | 1 | Finder right-click → Quick Actions | a `.zip`, a folder, a loose `SKILL.md` |
 | 2 | select text → right-click → Services | skill markdown in a message or doc |
 | 3 | **⌃⌥⌘S** anywhere | GitHub URLs, copied skill text, a file path |
-| 4 | right-click → Services → **Set Claude Skills Hotkey** | changes the shortcut in row 3 |
+| 4 | right-click → Services → **Claude Skills Shortcuts** | shows and changes the shortcuts above |
 
-### Changing the hotkey
+### Viewing and changing the shortcuts
 
-Right-click anywhere → Services → **Set Claude Skills Hotkey** offers a few
-presets, a free-text field, and "remove the shortcut". Typed shortcuts are
-accepted in any of `ctrl-opt-cmd-K`, `cmd+shift+L`, `⌃⌥⌘K` or the raw `^~@k`;
-a shortcut with no modifier is refused, since it would fire while you type.
+Right-click anywhere → Services → **Claude Skills Shortcuts** opens with every
+binding listed:
+
+```
+Add to Claude Skills                 (none)
+Add Selected Text to Claude Skills   (none)
+Add Clipboard to Claude Skills       ⌃⌥⌘S
+Claude Skills Shortcuts              (none)   (this dialog)
+```
+
+Reading it is the point — press Close and nothing changes. Picking a row offers
+presets, a free-text field and "remove the shortcut", then returns to the list.
+Any of the three actions can take a shortcut, not just the clipboard one: a
+shortcut on the text action fires on the current selection, which is quicker
+than the context menu. The dialog itself is deliberately not bindable — losing
+the shortcut you use to fix shortcuts is a bad afternoon.
+
+Typed shortcuts are accepted as `ctrl-opt-cmd-K`, `cmd+shift+L`, `⌃⌥⌘K` or the
+raw `^~@k`; one with no modifier is refused, since it would fire while you type.
 
 Reinstalling never clobbers a shortcut you have chosen — `install.sh` only
 writes the ⌃⌥⌘S default when no binding exists yet. There is also
-`run.sh hotkey --set cmd-shift-L`, `--set none` and `--show` for scripted use,
+`run.sh hotkey --show` to print the table, plus `--set cmd-shift-L` / `--set none`
+for scripted use,
 and System Settings → Keyboard → Keyboard Shortcuts → Services still works.
 
 ### What the hotkey accepts

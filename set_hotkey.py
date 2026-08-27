@@ -113,10 +113,29 @@ def parse(text: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def read_current() -> str | None:
-    prefs = _load()
-    entry = prefs.get("NSServicesStatus", {}).get(SERVICE_KEY, {})
-    return entry.get("key_equivalent")
+def read_current(service=HOTKEY_SERVICE) -> str | None:
+    return read_all().get(service.menu_title)
+
+
+def read_all() -> dict[str, str | None]:
+    """Current shortcut for every service, keyed by menu title."""
+    status = _load().get("NSServicesStatus", {})
+    return {
+        s.menu_title: status.get(s.pbs_key, {}).get("key_equivalent")
+        for s in SERVICES
+    }
+
+
+def summary() -> str:
+    """The whole picture, for the dialog prompt and for --show."""
+    width = max(len(s.menu_title) for s in SERVICES)
+    bindings = read_all()
+    lines = []
+    for service in SERVICES:
+        shown = describe(bindings[service.menu_title])
+        note = "" if service.bindable else "   (this dialog)"
+        lines.append(f"{service.menu_title.ljust(width)}   {shown}{note}")
+    return "\n".join(lines)
 
 
 def _load() -> dict:
@@ -126,7 +145,7 @@ def _load() -> dict:
         return plistlib.loads(plist.read_bytes()) if plist.exists() else {}
 
 
-def write_key_equivalent(equivalent: str | None) -> None:
+def write_key_equivalent(equivalent: str | None, service=HOTKEY_SERVICE) -> None:
     """Set (or with None, clear) the clipboard action's shortcut, then re-register.
 
     Goes through `defaults export`/`import` because the service key contains
@@ -136,7 +155,7 @@ def write_key_equivalent(equivalent: str | None) -> None:
     """
     prefs = _load()
     status = prefs.setdefault("NSServicesStatus", {})
-    entry = status.setdefault(SERVICE_KEY, {})
+    entry = status.setdefault(service.pbs_key, {})
     if equivalent:
         entry["key_equivalent"] = equivalent
     else:
@@ -151,6 +170,13 @@ def write_key_equivalent(equivalent: str | None) -> None:
         entry.setdefault("presentation_modes", {}).update(
             {"ContextMenu": 1, "ServicesMenu": 1, "FinderPreview": 1}
         )
+
+    live = {s.pbs_key for s in SERVICES}
+    for stale in [
+        k for k in status
+        if "Claude Skills" in k and k not in live
+    ]:
+        del status[stale]
 
     with tempfile.TemporaryDirectory() as tmp:
         plist = Path(tmp) / "pbs.plist"
@@ -197,9 +223,42 @@ def alert(message: str) -> None:
 
 CUSTOM = "Type my own…"
 REMOVE = "Remove the shortcut"
+DONE = "Done"
 
 
-def pick(current: str | None) -> str | None:
+def choose_service():
+    """Show every binding and return the service to change, or None to close.
+
+    This dialog doubles as the viewer: reading it is the point, changing
+    something is optional.
+    """
+    bindings = read_all()
+    labels = {}
+    for service in SERVICES:
+        if not service.bindable:
+            continue
+        labels[f"{service.menu_title}   —   {describe(bindings[service.menu_title])}"] = service
+    labels[DONE] = None
+
+    listing = ", ".join(_q(k) for k in labels)
+    chosen = _osascript(
+        f"set chosen to choose from list {{{listing}}} "
+        f'with title "Claude Skills shortcuts" '
+        f'with prompt "Current shortcuts:\n\n{summary()}\n\n'
+        f'Pick one to change it, or Done to close." '
+        f'default items {{{_q(DONE)}}} '
+        f'OK button name "Change" cancel button name "Close"\n'
+        'if chosen is false then return ""\n'
+        "return item 1 of chosen"
+    )
+    if not chosen or chosen == DONE:
+        return None
+    if chosen not in labels:
+        raise HotkeyError(f"Unexpected selection {chosen!r}.")
+    return labels[chosen]
+
+
+def pick(current: str | None, service) -> str | None:
     labels: dict[str, str | None] = {}
     for preset in PRESETS:
         label = describe(preset) + ("   (current)" if preset == current else "")
@@ -211,9 +270,9 @@ def pick(current: str | None) -> str | None:
     default = next((_q(k) for k, v in labels.items() if v == current), _q(CUSTOM))
     chosen = _osascript(
         f"set chosen to choose from list {{{listing}}} "
-        f'with title "Claude Skills hotkey" '
-        f'with prompt "Shortcut for pasting a skill from the clipboard.'
-        f'\\n\\nCurrently: {describe(current)}" '
+        f'with title "Claude Skills shortcuts" '
+        f'with prompt "Shortcut for “{service.menu_title}”.'
+        f'\n\nCurrently: {describe(current)}" '
         f"default items {{{default}}}\n"
         'if chosen is false then return ""\n'
         "return item 1 of chosen"
@@ -228,8 +287,8 @@ def pick(current: str | None) -> str | None:
     typed = _osascript(
         f"text returned of (display dialog "
         f'"Type the shortcut — modifiers then one letter or digit.'
-        f'\\n\\nFor example:  ctrl-opt-cmd-K    or    cmd-shift-L" '
-        f'with title "Claude Skills hotkey" '
+        f'\n\nFor example:  ctrl-opt-cmd-K    or    cmd-shift-L" '
+        f'with title "Claude Skills shortcuts" '
         f"default answer {_q(describe(current) if current else 'ctrl-opt-cmd-K')} "
         f'buttons {{"Cancel", "Set"}} default button "Set")'
     )
@@ -239,25 +298,25 @@ def pick(current: str | None) -> str | None:
 def main(argv: list[str]) -> int:
     try:
         if "--show" in argv:
-            print(describe(read_current()))
+            print(summary())
             return 0
 
         if "--set" in argv:
             value = argv[argv.index("--set") + 1]
             chosen = None if value.lower() in ("none", "off", "") else parse(value)
-        else:
-            chosen = pick(read_current())
+            write_key_equivalent(chosen)
+            print(f"{HOTKEY_SERVICE.menu_title}: {describe(chosen)}")
+            return 0
 
-        write_key_equivalent(chosen)
-        message = (
-            f"Shortcut is now {describe(chosen)}"
-            if chosen
-            else "Shortcut removed. The action stays in the Services menu."
-        )
-        if "--set" in argv:
-            print(message)
-        else:
-            notify(message)
+        # Interactive: the list of bindings is the view; changing is optional.
+        while (service := choose_service()) is not None:
+            chosen = pick(read_current(service), service)
+            write_key_equivalent(chosen, service)
+            notify(
+                f"{service.menu_title}: {describe(chosen)}"
+                if chosen
+                else f"{service.menu_title}: shortcut removed"
+            )
         return 0
     except HotkeyError as exc:
         if "--set" in argv:

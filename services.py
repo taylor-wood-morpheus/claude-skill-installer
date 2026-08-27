@@ -22,6 +22,7 @@ class Service:
     send_key: str        # Info.plist key: NSSendFileTypes or NSSendTypes
     send_value: tuple[str, ...]
     stdin: bool          # True = pipe input to stdin, False = pass as "$@"
+    bindable: bool = True  # False for the shortcuts dialog itself
 
     @property
     def command(self) -> str:
@@ -69,12 +70,13 @@ SERVICES = (
     ),
     Service(
         bundle="Set Claude Skills Hotkey",
-        menu_title="Set Claude Skills Hotkey",
+        menu_title="Claude Skills Shortcuts",
         trigger="hotkey",
         input_type="com.apple.Automator.nothing",
         send_key="NSSendTypes",
         send_value=(),
         stdin=True,
+        bindable=False,
     ),
 )
 
