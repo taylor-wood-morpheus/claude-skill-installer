@@ -41,7 +41,8 @@ print "\nInstalling engine to $TOOL_DIR…"
 mkdir -p "$TOOL_DIR"
 install -m 755 "$HERE/install.py" "$TOOL_DIR/install.py"
 install -m 755 "$HERE/run.sh"     "$TOOL_DIR/run.sh"
-print "  ✓ install.py, run.sh"
+install -m 755 "$HERE/set_hotkey.py" "$TOOL_DIR/set_hotkey.py"
+print "  ✓ install.py, run.sh, set_hotkey.py"
 
 print "\nGenerating Quick Actions…"
 "$PYTHON" "$HERE/make_quick_actions.py"
@@ -58,6 +59,6 @@ Installed. Three ways to add a skill:
   2. Any text    select it  →  right-click  →  Services  →  Add to Claude Skills
   3. Clipboard   copy a GitHub URL or skill text  →  press  ⌃⌥⌘S
 
-Rebind the hotkey in System Settings → Keyboard → Keyboard Shortcuts → Services.
+To change that shortcut: right-click anywhere → Services → Set Claude Skills Hotkey.
 Log:  ~/.claude/tools/skill-installer/install.log
 DONE

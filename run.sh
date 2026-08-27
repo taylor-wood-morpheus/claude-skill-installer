@@ -38,4 +38,10 @@ else
 fi
 
 print -r -- "$(date '+%F %T') INFO    run.sh: interpreter=$PYTHON trigger=$1 claude_auth=$AUTH" >> "$LOG"
+# The hotkey editor is a separate entry point, not an install trigger.
+if [[ "$1" == "hotkey" ]]; then
+  shift
+  exec "$PYTHON" "$HERE/set_hotkey.py" "$@"
+fi
+
 exec "$PYTHON" "$HERE/install.py" "$@"

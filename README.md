@@ -23,8 +23,19 @@ which of these it found.
 | 1 | Finder right-click → Quick Actions | a `.zip`, a folder, a loose `SKILL.md` |
 | 2 | select text → right-click → Services | skill markdown in a message or doc |
 | 3 | **⌃⌥⌘S** anywhere | GitHub URLs, copied skill text, a file path |
+| 4 | right-click → Services → **Set Claude Skills Hotkey** | changes the shortcut in row 3 |
 
-Rebind the hotkey in System Settings → Keyboard → Keyboard Shortcuts → Services.
+### Changing the hotkey
+
+Right-click anywhere → Services → **Set Claude Skills Hotkey** offers a few
+presets, a free-text field, and "remove the shortcut". Typed shortcuts are
+accepted in any of `ctrl-opt-cmd-K`, `cmd+shift+L`, `⌃⌥⌘K` or the raw `^~@k`;
+a shortcut with no modifier is refused, since it would fire while you type.
+
+Reinstalling never clobbers a shortcut you have chosen — `install.sh` only
+writes the ⌃⌥⌘S default when no binding exists yet. There is also
+`run.sh hotkey --set cmd-shift-L`, `--set none` and `--show` for scripted use,
+and System Settings → Keyboard → Keyboard Shortcuts → Services still works.
 
 ### What the hotkey accepts
 
@@ -59,7 +70,7 @@ download the attachment and use the Finder action.
 
 ## How it works
 
-Three Automator `.workflow` bundles in `~/Library/Services`, all invoking
+Four Automator `.workflow` bundles in `~/Library/Services`, all invoking
 `~/.claude/tools/skill-installer/run.sh`.
 
 Two constraints shaped this. Services are matched by **UTI conformance, never by
@@ -68,6 +79,10 @@ declares `public.folder`, `public.archive` and `public.plain-text`, which covers
 folders, every archive flavour and anything text-like. And services run with a
 minimal environment via launchd, so `run.sh` resolves an interpreter and fixes
 `PATH` before handing off.
+
+`set_hotkey.py` owns the `pbs` encoding, so both the installer and the
+hotkey editor write a shortcut through the same code path rather than keeping
+two copies of it.
 
 `make_quick_actions.py` generates the bundles locally from an action plist
 embedded as `action_template.b64`. Both details matter: the plist carries a

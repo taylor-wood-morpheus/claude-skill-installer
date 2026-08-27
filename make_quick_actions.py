@@ -21,6 +21,9 @@ import sys
 import uuid
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import set_hotkey  # noqa: E402  (same directory, installed alongside)
+
 SERVICES = Path.home() / "Library" / "Services"
 RUNNER = "$HOME/.claude/tools/skill-installer/run.sh"
 TEMPLATE = Path(__file__).resolve().parent / "action_template.b64"
@@ -51,6 +54,14 @@ SPECS = [
         "Add Clipboard to Claude Skills",
         "Add Clipboard to Claude Skills",
         f'exec "{RUNNER}" clipboard',
+        "com.apple.Automator.nothing",
+        ("NSSendTypes", []),
+        0,
+    ),
+    (
+        "Set Claude Skills Hotkey",
+        "Set Claude Skills Hotkey",
+        f'exec "{RUNNER}" hotkey',
         "com.apple.Automator.nothing",
         ("NSSendTypes", []),
         0,
@@ -109,42 +120,14 @@ def build(template: dict) -> list[Path]:
     return built
 
 
-def bind_hotkey(combination: str = "^~@s") -> None:
-    """Give the clipboard action a global key equivalent.
-
-    This lives in the `pbs` domain under a key containing spaces and parens that
-    `defaults write -dict-add` cannot parse, hence the export/modify/import round
-    trip -- which also goes through the preferences API instead of fighting
-    cfprefsd's cache.
-    """
-    import subprocess
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmp:
-        plist = Path(tmp) / "pbs.plist"
-        subprocess.run(["defaults", "export", "pbs", str(plist)], check=True)
-        prefs = plistlib.loads(plist.read_bytes()) if plist.exists() else {}
-        status = prefs.setdefault("NSServicesStatus", {})
-        status["(null) - Add Clipboard to Claude Skills - runWorkflowAsService"] = {
-            "key_equivalent": combination,
-            "presentation_modes": {"ContextMenu": 1, "ServicesMenu": 1},
-        }
-        for title in ("Add to Claude Skills", "Add Clipboard to Claude Skills"):
-            entry = status.setdefault(f"(null) - {title} - runWorkflowAsService", {})
-            modes = entry.setdefault("presentation_modes", {})
-            modes.update({"ContextMenu": 1, "ServicesMenu": 1, "FinderPreview": 1})
-        plist.write_bytes(plistlib.dumps(prefs))
-        subprocess.run(["defaults", "import", "pbs", str(plist)], check=True)
-    print(f"  bound hotkey {combination} (control-option-command-S)")
-
-
 def main() -> int:
     if not TEMPLATE.exists():
         print(f"missing {TEMPLATE}", file=sys.stderr)
         return 1
     template = plistlib.loads(base64.b64decode(TEMPLATE.read_text()))
     build(template)
-    bind_hotkey()
+    set_hotkey.write_key_equivalent(set_hotkey.read_current() or set_hotkey.DEFAULT)
+    print(f"  hotkey: {set_hotkey.describe(set_hotkey.read_current())}")
     return 0
 
 
