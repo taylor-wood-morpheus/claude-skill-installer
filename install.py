@@ -55,6 +55,8 @@ class Candidate:
     name: str
     description: str
     text: str
+    # The name as written in the selection, when it was not valid and was rewritten.
+    renamed_from: str | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -182,9 +184,21 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
     return fields
 
 
+# Agent Skills spec (agentskills.io): lowercase letters, digits and single
+# hyphens, at most 64 characters, matching the skill's directory name.
+MAX_NAME = 64
+NAME_LINE = re.compile(r"(?m)^name:[^\r\n]*")
+
+
 def slugify(name: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
-    return slug[:48] or "unnamed-skill"
+    return re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")[:MAX_NAME].strip("-")
+
+
+def with_name(text: str, name: str) -> str:
+    """Rewrite the frontmatter's name line, and nothing else in the text."""
+    header = FRONTMATTER.match(text)
+    assert header, "only called on text whose frontmatter has a name"
+    return NAME_LINE.sub(f"name: {name}", text[: header.end()], count=1) + text[header.end() :]
 
 
 def _looks_like_frontmatter(text: str, start: int) -> bool:
@@ -229,10 +243,26 @@ def candidate(text: str) -> Candidate:
         log.warning("refusing: missing=%s fields=%s head=%r", missing, fields, text[:120])
         what = "no frontmatter" if not fields else f"no {' or '.join(missing)}"
         raise SkillError(f"This text has {what}.\n\n{MISSING_FRONTMATTER}")
+    written = fields["name"]
+    name = slugify(written)
+    if not name:
+        log.warning("refusing: name has no usable characters name=%r", written)
+        raise SkillError(
+            f"The skill's name “{written}” has no letters or digits to make a "
+            "valid name from.\n\nNames are lowercase letters, digits and hyphens, "
+            "like my-skill."
+        )
+    text = text.rstrip() + "\n"
+    if name == written:
+        return Candidate(name=name, description=fields["description"], text=text)
+    # The folder and the name must match, and the folder has to be valid, so the
+    # name line is rewritten rather than installing a skill Claude cannot load.
+    log.info("rewriting invalid name written=%r name=%r", written, name)
     return Candidate(
-        name=slugify(fields["name"]),
+        name=name,
         description=fields["description"],
-        text=text.rstrip() + "\n",
+        text=with_name(text, name),
+        renamed_from=written,
     )
 
 
@@ -251,14 +281,6 @@ def candidates_from_text(text: str) -> list[Candidate]:
 # --------------------------------------------------------------------------- #
 
 
-def _unique_name(name: str) -> str:
-    for suffix in range(2, 100):
-        candidate = f"{name}-{suffix}"
-        if not (SKILLS_DIR / candidate).exists():
-            return candidate
-    raise SkillError(f"Could not find a free name based on {name!r}.")
-
-
 def install(candidate: Candidate) -> Path:
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
     dest = SKILLS_DIR / candidate.name
@@ -268,18 +290,18 @@ def install(candidate: Candidate) -> Path:
             f"A skill called “{candidate.name}” is already installed.\n\n"
             f"Existing: {sum(1 for _ in dest.rglob('*') if _.is_file())} file(s)\n"
             "Incoming: its SKILL.md, from the selected text",
-            ["Cancel", "Keep Both", "Overwrite"],
-            "Keep Both",
+            ["Cancel", "Overwrite"],
+            "Cancel",
         )
-        if choice == "Overwrite":
-            shutil.rmtree(dest)
-        elif choice == "Keep Both":
-            dest = SKILLS_DIR / _unique_name(candidate.name)
-        else:
+        if choice != "Overwrite":
             raise SkillError("cancelled")
+        shutil.rmtree(dest)
     dest.mkdir(parents=True)
     (dest / "SKILL.md").write_text(candidate.text, encoding="utf-8")
-    log.info("installed name=%s dest=%s chars=%d", candidate.name, dest, len(candidate.text))
+    log.info(
+        "installed name=%s renamed_from=%r dest=%s chars=%d",
+        candidate.name, candidate.renamed_from, dest, len(candidate.text),
+    )
     return dest
 
 
@@ -299,15 +321,18 @@ def run(argv: Sequence[str]) -> None:
             raise SkillError(f"Unknown trigger {other!r}.")
 
     log.info("discovered candidates=%s", [c.name for c in candidates])
-    installed = [install(c) for c in choose(candidates)]
+    chosen = choose(candidates)
+    for c in chosen:
+        install(c)
 
-    if len(installed) == 1:
-        notify("Skill installed", f"{installed[0].name} → ~/.claude/skills")
+    labels = [
+        f"{c.name} (renamed from “{c.renamed_from}”)" if c.renamed_from else c.name
+        for c in chosen
+    ]
+    if len(labels) == 1:
+        notify("Skill installed", f"{labels[0]} → ~/.claude/skills")
     else:
-        notify(
-            f"{len(installed)} skills installed",
-            ", ".join(p.name for p in installed),
-        )
+        notify(f"{len(labels)} skills installed", ", ".join(labels))
 
 
 def main() -> int:
