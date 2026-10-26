@@ -1,9 +1,8 @@
-"""The one place the four Quick Actions are described.
+"""The one place the Quick Actions are described.
 
-Both the bundle generator and the hotkey editor need this list -- the generator
-to write the .workflow bundles, the editor to enable every service in pbs. When
-it was duplicated, a service added to one list stayed invisible because the
-other never enabled it.
+The generator writes a .workflow bundle for each and enables each in pbs; setup
+removes each. Keeping one list means a service cannot be written but never
+enabled, which leaves it invisible.
 """
 
 from __future__ import annotations
@@ -28,7 +27,6 @@ class Service:
     send_key: str        # Info.plist key: NSSendFileTypes or NSSendTypes
     send_value: tuple[str, ...]
     stdin: bool          # True = pipe input to stdin, False = pass as "$@"
-    bindable: bool = True  # False for the shortcuts dialog itself
 
     def command(self, runner: str) -> str:
         args = ' "$@"' if not self.stdin and self.input_type.endswith("Object") else ""
@@ -44,18 +42,6 @@ class Service:
 
 SERVICES = (
     Service(
-        bundle="Add to Claude Skills",
-        menu_title="Add to Claude Skills",
-        trigger="files",
-        input_type="com.apple.Automator.fileSystemObject",
-        send_key="NSSendFileTypes",
-        # Matching is by UTI conformance, so these three cover folders, every
-        # archive flavour, and anything text-like. Services cannot match on a
-        # filename, so "only SKILL.md" is not expressible.
-        send_value=("public.folder", "public.archive", "public.plain-text"),
-        stdin=False,
-    ),
-    Service(
         bundle="Add Selected Text to Claude Skills",
         menu_title="Add Selected Text to Claude Skills",
         trigger="text",
@@ -64,28 +50,14 @@ SERVICES = (
         send_value=("NSStringPboardType",),
         stdin=True,
     ),
-    Service(
-        bundle="Add Clipboard to Claude Skills",
-        menu_title="Add Clipboard to Claude Skills",
-        trigger="clipboard",
-        input_type="com.apple.Automator.nothing",
-        send_key="NSSendTypes",
-        send_value=(),
-        stdin=True,
-    ),
-    Service(
-        bundle="Set Claude Skills Hotkey",
-        menu_title="Claude Skills Shortcuts",
-        trigger="hotkey",
-        input_type="com.apple.Automator.nothing",
-        send_key="NSSendTypes",
-        send_value=(),
-        stdin=True,
-        bindable=False,
-    ),
 )
 
-# The service the keyboard shortcut is attached to.
-HOTKEY_SERVICE = next(s for s in SERVICES if s.trigger == "clipboard")
+# Bundles and apps that earlier versions installed, removed whenever setup runs.
+RETIRED_BUNDLES = (
+    "Add to Claude Skills",
+    "Add Clipboard to Claude Skills",
+    "Set Claude Skills Hotkey",
+)
+RETIRED_APPS = ("Claude Skills",)
 
 assert len({s.menu_title for s in SERVICES}) == len(SERVICES), "menu titles must be unique"

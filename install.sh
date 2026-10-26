@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Install the "Add to Claude Skills" Quick Actions for the current user.
+# Install the "Add Selected Text to Claude Skills" Quick Action for the current user.
 # Idempotent: safe to re-run to pick up changes.
 
 set -eu
@@ -25,21 +25,9 @@ if [[ -z "$PYTHON" ]]; then
 fi
 print "  ✓ python $($PYTHON -c 'import sys; print(sys.version.split()[0])') at $PYTHON"
 
-if command -v claude >/dev/null 2>&1; then
-  print "  ✓ claude CLI found (used to name skills that arrive without frontmatter)"
-else
-  print "  ! claude CLI not on PATH — skills pasted without name/description will be rejected"
-fi
-
-if command -v gh >/dev/null 2>&1 && gh auth token >/dev/null 2>&1; then
-  print "  ✓ gh authenticated (private repos and higher GitHub rate limits)"
-else
-  print "  ! gh not authenticated — public GitHub only, 60 requests/hour"
-fi
-
 print "\nInstalling engine to $TOOL_DIR…"
 mkdir -p "$TOOL_DIR"
-for f in install.py run.sh set_hotkey.py setup.py make_quick_actions.py make_app.py; do
+for f in install.py run.sh setup.py make_quick_actions.py; do
   install -m 755 "$HERE/$f" "$TOOL_DIR/$f"
 done
 for f in services.py action_template.b64; do
@@ -54,17 +42,9 @@ print
 
 cat <<'DONE'
 
-Installed. Four ways in:
+Installed. Select a skill's text anywhere, right-click, then
+  Services  →  Add Selected Text to Claude Skills
 
-  1. Finder      right-click a zip / folder / .md  →  Add to Claude Skills
-  2. Any text    select it  →  right-click  →  Services
-                 →  Add Selected Text to Claude Skills
-  3. Clipboard   copy a GitHub URL or skill text  →  press  ⌃⌥⌘S
-  4. Anywhere    ⌘-space  →  "Claude Skills"  →  add from clipboard, or
-                 view and change the shortcuts
-
-Actions 1 and 2 are Services and appear in the context menu. Action 3 takes no
-input, so macOS will not list it in any Services menu -- the hotkey and the app
-in 4 are the ways to reach it.
+The text must start with frontmatter giving the skill's name and description.
 Log:  ~/Library/Logs/claude-skill-installer/install.log
 DONE
