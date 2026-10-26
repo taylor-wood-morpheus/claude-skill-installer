@@ -56,7 +56,12 @@ is just a link to a skill is refused the same way: select the skill itself.
 - **A surrounding code fence** (` ```markdown … ``` `) is stripped.
 - **Several skills in one selection** — each starting with its own frontmatter —
   raise a checklist so you choose. A single skill installs without asking.
-- **Name collisions** offer Overwrite / Keep Both (`name-2`) / Cancel.
+- **An invalid name** is made valid: skill names are lowercase letters, digits
+  and hyphens, at most 64 characters, and must match the skill's folder
+  ([Agent Skills spec](https://agentskills.io/specification)). So `name: Alpha
+  Skill` installs as `alpha-skill/` with its `name:` line rewritten to match —
+  the only change ever made to the text. The notification says so.
+- **Name collisions** offer Overwrite / Cancel.
 
 To bind a keyboard shortcut to it: System Settings → Keyboard → Keyboard
 Shortcuts → Services → Text → *Add Selected Text to Claude Skills*.
@@ -97,7 +102,7 @@ visible.
 ## Testing
 
 ```sh
-CLAUDE_SKILLS_DIR=/tmp/x SKILL_INSTALLER_AUTO_ANSWER="Keep Both" ./run.sh text < SKILL.md
+CLAUDE_SKILLS_DIR=/tmp/x SKILL_INSTALLER_AUTO_ANSWER=Overwrite ./run.sh text < SKILL.md
 ```
 
 `CLAUDE_SKILLS_DIR` redirects the install; `SKILL_INSTALLER_AUTO_ANSWER`
