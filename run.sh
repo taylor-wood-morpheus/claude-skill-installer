@@ -8,7 +8,10 @@
 
 set -u
 HERE="${0:A:h}"
-LOG="$HERE/install.log"
+# Outside the code directory: Homebrew replaces that wholesale on upgrade.
+export SKILL_INSTALLER_LOG="$HOME/Library/Logs/claude-skill-installer/install.log"
+LOG="$SKILL_INSTALLER_LOG"
+mkdir -p "${LOG:h}"
 
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
