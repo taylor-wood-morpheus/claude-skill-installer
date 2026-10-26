@@ -3,7 +3,7 @@
 
 Invoked by the macOS Quick Actions in ~/Library/Services. There is deliberately no
 human-facing command line: all feedback goes through native dialogs and
-notifications, and all diagnostics go to install.log next to this file.
+notifications, and all diagnostics go to ~/Library/Logs/claude-skill-installer/install.log.
 
 Entry points:
     install.py files PATH...   a zip, a directory, or a loose SKILL.md
@@ -36,7 +36,13 @@ SKILLS_DIR = Path(
 # Set to a button label to auto-answer every dialog; used by the test harness and
 # by any non-GUI invocation, where a modal dialog would simply hang.
 AUTO_ANSWER = os.environ.get("SKILL_INSTALLER_AUTO_ANSWER")
-LOG_PATH = Path(__file__).resolve().parent / "install.log"
+# run.sh exports this; the default covers running install.py directly.
+LOG_PATH = Path(
+    os.environ.get(
+        "SKILL_INSTALLER_LOG",
+        Path.home() / "Library" / "Logs" / "claude-skill-installer" / "install.log",
+    )
+)
 USER_AGENT = "claude-skill-installer/1.0"
 HTTP_TIMEOUT = 30
 MAX_LLM_CHARS = 8000

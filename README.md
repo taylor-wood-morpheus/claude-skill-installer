@@ -5,8 +5,28 @@ text selection, or the clipboard. macOS only. There is no command to type.
 
 ## Install
 
+With Homebrew (MorpheusWealth tap):
+
 ```sh
-git clone <this-repo> && cd claude-skill-installer && ./install.sh
+brew tap morpheuswealth/tools git@github.com:MorpheusWealth/homebrew-tools.git
+brew install morpheuswealth/tools/claude-skill-installer
+claude-skills-setup
+```
+
+`claude-skills-setup` writes the Quick Actions and the app into `~/Library` —
+a formula may not touch your home directory itself. To uninstall, remove those
+first, because `brew uninstall` cannot:
+
+```sh
+claude-skills-setup --remove
+brew uninstall claude-skill-installer
+```
+
+Or from a checkout:
+
+```sh
+git clone https://github.com/taylor-wood-morpheus/claude-skill-installer.git
+cd claude-skill-installer && ./install.sh
 ```
 
 `./uninstall.sh` removes it. Skills already installed are never touched.
@@ -104,7 +124,9 @@ download the attachment and use the Finder action.
 
 Four Automator `.workflow` bundles in `~/Library/Services` plus
 `~/Applications/Claude Skills.app`, all invoking
-`~/.claude/tools/skill-installer/run.sh`.
+the `run.sh` beside the `setup.py` that generated them —
+`~/.claude/tools/skill-installer/` for a checkout install, the formula's
+`opt/…/libexec/` under Homebrew.
 
 The app is not decoration. A Service is only offered when its declared send
 types match the current context, so the two actions that take no input
@@ -140,7 +162,7 @@ to run — one written by a script is not.
 
 ## Diagnostics
 
-`~/.claude/tools/skill-installer/install.log` (rotating, 1 MB × 3) records every
+`~/Library/Logs/claude-skill-installer/install.log` (rotating, 1 MB × 3) records every
 trigger, fetch, discovery decision, dialog answer and install path. Services
 swallow stdout and stderr, so this is the only place failures are visible.
 

@@ -19,12 +19,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from services import DEFAULT_RUNNER  # noqa: E402
+
 APPS = Path.home() / "Applications"
 APP_NAME = "Claude Skills"
 BUNDLE_ID = "local.claude-skill-installer.menu"
-RUNNER = "$HOME/.claude/tools/skill-installer/run.sh"
 
-LAUNCHER = f'''#!/bin/zsh
+def launcher(runner: str) -> str:
+    return f'''#!/bin/zsh
 # Front door for the two actions that take no input. Both are also reachable
 # from the Services menu only in theory -- see make_app.py.
 set -u
@@ -45,8 +48,8 @@ APPLESCRIPT
 )
 
 case "$choice" in
-  "$ADD")  exec "{RUNNER}" clipboard ;;
-  "$KEYS") exec "{RUNNER}" hotkey ;;
+  "$ADD")  exec "{runner}" clipboard ;;
+  "$KEYS") exec "{runner}" hotkey ;;
   *)       exit 0 ;;
 esac
 '''
@@ -66,7 +69,7 @@ INFO = {
 }
 
 
-def build() -> Path:
+def build(runner: str = DEFAULT_RUNNER) -> Path:
     APPS.mkdir(parents=True, exist_ok=True)
     bundle = APPS / f"{APP_NAME}.app"
     shutil.rmtree(bundle, ignore_errors=True)
@@ -74,9 +77,9 @@ def build() -> Path:
     macos = bundle / "Contents" / "MacOS"
     macos.mkdir(parents=True)
     (bundle / "Contents" / "Info.plist").write_bytes(plistlib.dumps(INFO))
-    launcher = macos / "claude-skills"
-    launcher.write_text(LAUNCHER)
-    launcher.chmod(0o755)
+    script = macos / "claude-skills"
+    script.write_text(launcher(runner))
+    script.chmod(0o755)
 
     # Nudge Launch Services and Spotlight so ⌘-space finds it immediately.
     subprocess.run(

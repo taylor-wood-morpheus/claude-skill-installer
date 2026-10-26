@@ -39,21 +39,18 @@ fi
 
 print "\nInstalling engine to $TOOL_DIR…"
 mkdir -p "$TOOL_DIR"
-install -m 755 "$HERE/install.py" "$TOOL_DIR/install.py"
-install -m 755 "$HERE/run.sh"     "$TOOL_DIR/run.sh"
-install -m 755 "$HERE/set_hotkey.py" "$TOOL_DIR/set_hotkey.py"
-install -m 644 "$HERE/services.py"   "$TOOL_DIR/services.py"
-print "  ✓ install.py, run.sh, set_hotkey.py, services.py"
+for f in install.py run.sh set_hotkey.py setup.py make_quick_actions.py make_app.py; do
+  install -m 755 "$HERE/$f" "$TOOL_DIR/$f"
+done
+for f in services.py action_template.b64; do
+  install -m 644 "$HERE/$f" "$TOOL_DIR/$f"
+done
+print "  ✓ copied"
 
-print "\nGenerating Quick Actions…"
-"$PYTHON" "$HERE/make_quick_actions.py"
-
-print "\nBuilding Claude Skills.app…"
-"$PYTHON" "$HERE/make_app.py"
-
-print "\nRegistering with the Services system…"
-/System/Library/CoreServices/pbs -flush
-print "  ✓ flushed"
+# Run the installed copy, not this checkout: the bundles point at the run.sh
+# beside whichever setup.py generated them.
+print
+"$PYTHON" "$TOOL_DIR/setup.py"
 
 cat <<'DONE'
 
@@ -69,5 +66,5 @@ Installed. Four ways in:
 Actions 1 and 2 are Services and appear in the context menu. Action 3 takes no
 input, so macOS will not list it in any Services menu -- the hotkey and the app
 in 4 are the ways to reach it.
-Log:  ~/.claude/tools/skill-installer/install.log
+Log:  ~/Library/Logs/claude-skill-installer/install.log
 DONE

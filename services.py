@@ -9,8 +9,14 @@ other never enabled it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
-RUNNER = "$HOME/.claude/tools/skill-installer/run.sh"
+# What the bundles call when setup.py is not told otherwise: the run.sh in this
+# directory. Fine for a checkout install, whose directory is real. Homebrew passes
+# its stable opt/ path explicitly, because this file cannot recover it --
+# Python resolves symlinks when it builds sys.path[0], so __file__ here is
+# already the versioned Cellar path that the next `brew upgrade` deletes.
+DEFAULT_RUNNER = str(Path(__file__).resolve().parent / "run.sh")
 
 
 @dataclass(frozen=True)
@@ -24,10 +30,9 @@ class Service:
     stdin: bool          # True = pipe input to stdin, False = pass as "$@"
     bindable: bool = True  # False for the shortcuts dialog itself
 
-    @property
-    def command(self) -> str:
+    def command(self, runner: str) -> str:
         args = ' "$@"' if not self.stdin and self.input_type.endswith("Object") else ""
-        return f'exec "{RUNNER}" {self.trigger}{args}'
+        return f'exec "{runner}" {self.trigger}{args}'
 
     @property
     def pbs_key(self) -> str:

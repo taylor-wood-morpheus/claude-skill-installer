@@ -23,13 +23,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import set_hotkey  # noqa: E402  (same directory, installed alongside)
-from services import SERVICES  # noqa: E402
+from services import DEFAULT_RUNNER, SERVICES  # noqa: E402
 
 SERVICES_DIR = Path.home() / "Library" / "Services"
-RUNNER = "$HOME/.claude/tools/skill-installer/run.sh"
 TEMPLATE = Path(__file__).resolve().parent / "action_template.b64"
 
-def build(template: dict) -> list[Path]:
+def build(template: dict, runner: str) -> list[Path]:
     SERVICES_DIR.mkdir(parents=True, exist_ok=True)
     built = []
     for service in SERVICES:
@@ -37,7 +36,7 @@ def build(template: dict) -> list[Path]:
         action = doc["actions"][0]["action"]
         action["ActionParameters"].update(
             {
-                "COMMAND_STRING": service.command,
+                "COMMAND_STRING": service.command(runner),
                 "shell": "/bin/zsh",
                 "inputMethod": 0 if service.stdin else 1,
                 "CheckedForUserDefaultShell": True,
@@ -80,12 +79,12 @@ def build(template: dict) -> list[Path]:
     return built
 
 
-def main() -> int:
+def main(runner: str = DEFAULT_RUNNER) -> int:
     if not TEMPLATE.exists():
         print(f"missing {TEMPLATE}", file=sys.stderr)
         return 1
     template = plistlib.loads(base64.b64decode(TEMPLATE.read_text()))
-    build(template)
+    build(template, runner)
     set_hotkey.write_key_equivalent(set_hotkey.read_current() or set_hotkey.DEFAULT)
     print(f"  hotkey: {set_hotkey.describe(set_hotkey.read_current())}")
     return 0
