@@ -1,10 +1,9 @@
 #!/bin/zsh
-# Launcher for the Quick Actions in ~/Library/Services.
+# Launcher for the Quick Action in ~/Library/Services.
 #
-# Services inherit a minimal PATH and no login shell, so two things have to be
-# established here rather than assumed: an interpreter new enough for install.py
-# (match statements and tarfile's data filter need 3.12+; the stock
-# /usr/bin/python3 is 3.9), and a PATH that can find `claude` and `gh`.
+# Services inherit a minimal PATH and no login shell, so the interpreter has to
+# be found here rather than assumed: install.py needs 3.12+, and the stock
+# /usr/bin/python3 is 3.9.
 
 set -u
 HERE="${0:A:h}"
@@ -13,7 +12,7 @@ export SKILL_INSTALLER_LOG="$HOME/Library/Logs/claude-skill-installer/install.lo
 LOG="$SKILL_INSTALLER_LOG"
 mkdir -p "${LOG:h}"
 
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 PYTHON=""
 for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 "$HOME/.local/bin/python3" /usr/bin/python3; do
@@ -29,22 +28,5 @@ if [[ -z "$PYTHON" ]]; then
   exit 1
 fi
 
-# Which credential the frontmatter-synthesis call will bill is worth recording:
-# it differs between a terminal run and a Quick Action run, because launchd does
-# not source .zshrc. Presence only -- never log the value.
-if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
-  AUTH="api-key-env"
-elif [[ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
-  AUTH="auth-token-env"
-else
-  AUTH="claude-login"
-fi
-
-print -r -- "$(date '+%F %T') INFO    run.sh: interpreter=$PYTHON trigger=$1 claude_auth=$AUTH" >> "$LOG"
-# The hotkey editor is a separate entry point, not an install trigger.
-if [[ "$1" == "hotkey" ]]; then
-  shift
-  exec "$PYTHON" "$HERE/set_hotkey.py" "$@"
-fi
-
+print -r -- "$(date '+%F %T') INFO    run.sh: interpreter=$PYTHON trigger=${1:-}" >> "$LOG"
 exec "$PYTHON" "$HERE/install.py" "$@"

@@ -1,7 +1,7 @@
-# Add to Claude Skills
+# Add Selected Text to Claude Skills
 
-Install a Claude Code skill into `~/.claude/skills` from a Finder selection, a
-text selection, or the clipboard. macOS only. There is no command to type.
+Select a Claude Code skill's text anywhere — a Slack message, a doc, a web page —
+right-click, and install it into `~/.claude/skills`. macOS only.
 
 ## Install
 
@@ -13,9 +13,9 @@ brew install morpheuswealth/tools/claude-skill-installer
 claude-skills-setup
 ```
 
-`claude-skills-setup` writes the Quick Actions and the app into `~/Library` —
-a formula may not touch your home directory itself. To uninstall, remove those
-first, because `brew uninstall` cannot:
+`claude-skills-setup` writes the Quick Action into `~/Library/Services` — a
+formula may not touch your home directory itself. To uninstall, remove it first,
+because `brew uninstall` cannot:
 
 ```sh
 claude-skills-setup --remove
@@ -31,130 +31,57 @@ cd claude-skill-installer && ./install.sh
 
 `./uninstall.sh` removes it. Skills already installed are never touched.
 
-Requires macOS and Python 3.12+ (`brew install python`). The `claude` CLI is
-used to name skills that arrive without frontmatter, and an authenticated `gh`
-unlocks private repos and better GitHub rate limits — the installer reports
-which of these it found.
+Requires macOS and Python 3.12+ (the formula brings its own).
 
 ## Use
 
-| | Trigger | Handles |
-|---|---|---|
-| 1 | Finder right-click → Quick Actions | a `.zip`, a folder, a loose `SKILL.md` |
-| 2 | select text → right-click → Services | skill markdown in a message or doc |
-| 3 | **⌃⌥⌘S** anywhere | GitHub URLs, copied skill text, a file path |
-| 4 | ⌘-space → **Claude Skills** | add from the clipboard; view and change shortcuts |
+Select the skill's text → right-click → **Services → Add Selected Text to Claude
+Skills**.
 
-Actions 1 and 2 are Services and appear in the context menu when the selection
-matches. **Action 3 takes no input, and a Service whose `NSSendTypes` is empty
-matches no context, so macOS never lists it in a Services menu** — it exists to
-carry the keyboard shortcut, and `Claude Skills.app` (action 4) is the reachable
-front door for it. That is why the app exists at all: Spotlight indexes it, so
-⌘-space always finds it.
+The selection is the skill, verbatim. It must start with frontmatter:
 
-The shortcut itself works regardless: a key equivalent fires for a Service with
-empty `sendTypes` even though that Service can never be shown in a menu
-(verified). So action 3 is reachable by hotkey and by the app, and by nothing
-else — if it seems to have vanished, it hasn't, there was never a menu item.
+```markdown
+---
+name: my-skill
+description: What it does and when Claude should use it
+---
 
-### Viewing and changing the shortcuts
-
-⌘-space → **Claude Skills** → *Shortcuts…* opens with every binding listed:
-
-```
-Add to Claude Skills                 (none)
-Add Selected Text to Claude Skills   (none)
-Add Clipboard to Claude Skills       ⌃⌥⌘S
-Claude Skills Shortcuts              (none)   (this dialog)
+…the skill's instructions…
 ```
 
-Reading it is the point — press Close and nothing changes. Picking a row offers
-presets, a free-text field and "remove the shortcut", then returns to the list.
-Any of the three actions can take a shortcut, not just the clipboard one: a
-shortcut on the text action fires on the current selection, which is quicker
-than the context menu. The dialog itself is deliberately not bindable — losing
-the shortcut you use to fix shortcuts is a bad afternoon.
+Text without a `name` and `description` is refused with a dialog saying what is
+missing — nothing is generated for it and nothing is fetched. A selection that
+is just a link to a skill is refused the same way: select the skill itself.
 
-Typed shortcuts are accepted as `ctrl-opt-cmd-K`, `cmd+shift+L`, `⌃⌥⌘K` or the
-raw `^~@k`; one with no modifier is refused, since it would fire while you type.
-
-Reinstalling never clobbers a shortcut you have chosen — `install.sh` only
-writes the ⌃⌥⌘S default when no binding exists yet. There is also
-`run.sh hotkey --show` to print the table, plus `--set cmd-shift-L` / `--set none`
-for scripted use,
-and System Settings → Keyboard → Keyboard Shortcuts → Services still works.
-
-### What the hotkey accepts
-
-- `github.com/o/r` — whole repo; every `SKILL.md` in it, with a picker
-- `github.com/o/r/tree/ref/path` — one skill directory
-- `github.com/o/r/blob/ref/path/SKILL.md` — one file
-- `gist.github.com/…` — markdown files in a gist
-- any other URL — a zip is unpacked, anything else read as markdown
-- raw skill markdown, with or without frontmatter
-- a filesystem path
-
-URLs pasted without a scheme (`github.com/o/r/...`, as copied from a browser bar
-or a chat message) are recognised and fetched over https. A paste whose entire
-body is a link is refused rather than named — otherwise headless Claude writes
-convincing frontmatter for a skill that contains nothing but a URL.
-
-Slack message permalinks are **rejected with an explanation**: they carry no
-readable content without a Slack app token. Copy the message *text* instead, or
-download the attachment and use the Finder action.
-
-## Behaviour
-
-- **Missing frontmatter** is authored by headless `claude -p`, supplying a
-  kebab-case `name` and a `description`.
-- **Several skills in one source** raise a checklist so you choose. A single
-  skill installs without asking.
-- **Executable content** — anything not `.md`/`.txt`/`.json`/`.yaml`, or marked
-  `+x` — raises a confirmation listing the files. Documentation-only skills
-  install silently, so the friction lands only where it earns its place. A skill
-  from a chat message is a stranger's code running with your agent's
-  permissions; read that dialog.
+- **A surrounding code fence** (` ```markdown … ``` `) is stripped.
+- **Several skills in one selection** — each starting with its own frontmatter —
+  raise a checklist so you choose. A single skill installs without asking.
 - **Name collisions** offer Overwrite / Keep Both (`name-2`) / Cancel.
-- **Zip slip** — an archive member resolving outside the destination aborts the
-  whole install.
-- Quarantine xattrs are stripped after copy; `__MACOSX`, `._*` and `.DS_Store`
-  are pruned.
+
+To bind a keyboard shortcut to it: System Settings → Keyboard → Keyboard
+Shortcuts → Services → Text → *Add Selected Text to Claude Skills*.
+
+## Upgrading from v0.1
+
+v0.1 also had a Finder action, a clipboard hotkey (⌃⌥⌘S) that fetched GitHub
+URLs, `Claude Skills.app`, and wrote missing frontmatter with `claude -p`. All
+of that is gone. After `brew upgrade`, run `claude-skills-setup` once: it
+removes the old menu items, the app and the old hotkey. Until then, the old
+items show a dialog saying so.
 
 ## How it works
 
-Four Automator `.workflow` bundles in `~/Library/Services` plus
-`~/Applications/Claude Skills.app`, all invoking
-the `run.sh` beside the `setup.py` that generated them —
-`~/.claude/tools/skill-installer/` for a checkout install, the formula's
+One Automator `.workflow` bundle in `~/Library/Services` whose Run Shell Script
+action pipes the selection to the `run.sh` beside the `setup.py` that generated
+it — `~/.claude/tools/skill-installer/` for a checkout install, the formula's
 `opt/…/libexec/` under Homebrew.
 
-The app is not decoration. A Service is only offered when its declared send
-types match the current context, so the two actions that take no input
-(clipboard, shortcuts) can never appear in a Services menu — they are listed in
-System Settings → Keyboard Shortcuts → Services, where a shortcut can be
-assigned, but there is no menu item. The app bundle gives them a home Spotlight
-can find, and being written locally rather than downloaded it carries no
-quarantine flag.
+`services.py` describes the bundle once; the generator writes it and enables it
+in `pbs`. Enabling is not optional: macOS hides any service without an explicit
+`presentation_modes` entry. Services run with a minimal environment via
+launchd, so `run.sh` resolves an interpreter and fixes `PATH` before handing off.
 
-`services.py` is the single description of all four bundles. Both the generator
-and the hotkey editor read it, because every service needs an explicit
-`presentation_modes` entry in `pbs` — macOS hides any service that is not
-enabled, and a service added to one list while missing from the other never
-appears. Menu titles must also be unique: `pbs` keys services by menu title, so
-two bundles sharing a title collapse into one entry and only one can be enabled.
-
-Two further constraints shaped this. Services are matched by **UTI conformance,
-never by filename**, so the Finder item cannot be scoped to files called `SKILL.md`; it
-declares `public.folder`, `public.archive` and `public.plain-text`, which covers
-folders, every archive flavour and anything text-like. And services run with a
-minimal environment via launchd, so `run.sh` resolves an interpreter and fixes
-`PATH` before handing off.
-
-`set_hotkey.py` owns the `pbs` encoding, so both the installer and the
-hotkey editor write a shortcut through the same code path rather than keeping
-two copies of it.
-
-`make_quick_actions.py` generates the bundles locally from an action plist
+`make_quick_actions.py` generates the bundle locally from an action plist
 embedded as `action_template.b64`. Both details matter: the plist carries a
 dozen undocumented `AM*` keys that should not be hand-authored, and a
 `.workflow` that arrives inside a download is Gatekeeper-quarantined and refuses
@@ -162,14 +89,15 @@ to run — one written by a script is not.
 
 ## Diagnostics
 
-`~/Library/Logs/claude-skill-installer/install.log` (rotating, 1 MB × 3) records every
-trigger, fetch, discovery decision, dialog answer and install path. Services
-swallow stdout and stderr, so this is the only place failures are visible.
+`~/Library/Logs/claude-skill-installer/install.log` (rotating, 1 MB × 3) records
+every run, the frontmatter found or missing, dialog answers and install paths.
+Services swallow stdout and stderr, so this is the only place failures are
+visible.
 
 ## Testing
 
 ```sh
-CLAUDE_SKILLS_DIR=/tmp/x SKILL_INSTALLER_AUTO_ANSWER=Install ./run.sh files skill.zip
+CLAUDE_SKILLS_DIR=/tmp/x SKILL_INSTALLER_AUTO_ANSWER="Keep Both" ./run.sh text < SKILL.md
 ```
 
 `CLAUDE_SKILLS_DIR` redirects the install; `SKILL_INSTALLER_AUTO_ANSWER`
